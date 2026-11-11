@@ -16,7 +16,7 @@ class NourFedaaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'نور وفداء',
+      title: 'نور وفداء', // ChatGPT build v1
       locale: const Locale('ar'),
       supportedLocales: const [Locale('ar')],
       localizationsDelegates: const [
