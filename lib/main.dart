@@ -49,6 +49,7 @@ class _HomePageState extends State<HomePage> {
   int stars = 0;
   int level = 1;
   int completed = 0;
+  bool missionDoneToday = false;
 
   @override
   void initState() {
@@ -57,6 +58,10 @@ class _HomePageState extends State<HomePage> {
     stars = widget.prefs.getInt('stars') ?? 0;
     level = widget.prefs.getInt('level') ?? 1;
     completed = widget.prefs.getInt('completed') ?? 0;
+    final today = DateTime.now();
+    final savedDay = widget.prefs.getString('missionDay');
+    final todayKey = '${today.year}-${today.month}-${today.day}';
+    missionDoneToday = savedDay == todayKey;
   }
 
   Future<void> selectChild(String value) async {
@@ -65,17 +70,21 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> completeMission() async {
+    if (missionDoneToday) return;
     final newStars = stars + 1;
     final newCompleted = completed + 1;
     final newLevel = 1 + (newStars ~/ 5);
     await widget.prefs.setInt('stars', newStars);
     await widget.prefs.setInt('completed', newCompleted);
     await widget.prefs.setInt('level', newLevel);
+    final now = DateTime.now();
+    await widget.prefs.setString('missionDay', '${now.year}-${now.month}-${now.day}');
     if (!mounted) return;
     setState(() {
       stars = newStars;
       completed = newCompleted;
       level = newLevel;
+      missionDoneToday = true;
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -89,8 +98,8 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     if (child == null) return _SelectionPage(onSelect: selectChild);
 
-    final nextLevel = level * 5;
-    final progress = (stars / nextLevel).clamp(0.0, 1.0);
+    const starsPerLevel = 5;
+    final progress = ((stars % starsPerLevel) / starsPerLevel).clamp(0.0, 1.0);
 
     return Scaffold(
       appBar: AppBar(
@@ -112,7 +121,7 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 22),
           const _SectionTitle(title: 'مهمة اليوم', emoji: '🎯'),
           const SizedBox(height: 10),
-          _MissionCard(child: child!, onComplete: completeMission),
+          _MissionCard(child: child!, completed: missionDoneToday, onComplete: completeMission),
           const SizedBox(height: 22),
           const _SectionTitle(title: 'رحلتي', emoji: '🗺️'),
           const SizedBox(height: 10),
@@ -281,8 +290,9 @@ class _HeroCard extends StatelessWidget {
 }
 
 class _MissionCard extends StatelessWidget {
-  const _MissionCard({required this.child, required this.onComplete});
+  const _MissionCard({required this.child, required this.completed, required this.onComplete});
   final String child;
+  final bool completed;
   final VoidCallback onComplete;
 
   @override
@@ -304,7 +314,7 @@ class _MissionCard extends StatelessWidget {
                 const Text('💛', style: TextStyle(fontSize: 30)),
                 const SizedBox(width: 10),
                 const Expanded(child: Text('الخير الجميل', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900))),
-                Container(
+                if (!completed) Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(color: const Color(0xFFFFF0BC), borderRadius: BorderRadius.circular(20)),
                   child: const Text('+1 ⭐', style: TextStyle(fontWeight: FontWeight.w900)),
@@ -317,11 +327,17 @@ class _MissionCard extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               height: 52,
-              child: FilledButton.icon(
-                onPressed: onComplete,
-                icon: const Icon(Icons.celebration_rounded),
-                label: const Text('أنجزت المهمة 🎉', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
-              ),
+              child: completed
+                  ? FilledButton.icon(
+                      onPressed: null,
+                      icon: const Icon(Icons.check_circle_rounded),
+                      label: const Text('تم إنجاز مهمة اليوم ✓', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+                    )
+                  : FilledButton.icon(
+                      onPressed: onComplete,
+                      icon: const Icon(Icons.celebration_rounded),
+                      label: const Text('أنجزت المهمة 🎉', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+                    ),
             ),
           ],
         ),
